@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# This script recursively inspects directories and returns a list of git
+# repositories which were found to be in a "non-trivial" state. A repository is
+# in such a state if git status --porcelain=v1 produces a non-empty output.
+#
+# Parameters:
+# (optional) 1) A path to a directory which will serve as the root of the
+#               directory subtree which will be searched by the script.
+#
+# Preconditions: none.
+#
+# Effects:
+# 1) If a malformed directory path argument was provided, then an error message
+#    was printed. The script returned.
+# 2) If a malformed directory path argument was not present, then:
+#    a) If a directory path argument was not provided, then the current working
+#       directory was used as the root of the directory subtree which was
+#       searched.
+#    b) The list of git repositories in a non-trivial state which were in the
+#       selected directory subtree was sent to standard output.
+
+
 # Script definitions
 
 # If the name of a defined, non-positional shell parameter is present as the
@@ -56,6 +77,27 @@ function ConvertDirectoryPathToAbsolutePath ()
   fi
 }
 
+# This function performs a depth-first traversal of the directory list
+# which was passed as a list of arguments.
+#
+# Parameters:
+# Zero or more directory paths.
+#
+# Preconditions:
+# 1) A directory path argument must be terminated with a slash character "/".
+#
+# Effects:
+# 1) If no arguments were provided, then the function returned zero.
+# 2) If arguments were provided, then each argument was inspected:
+#    a) If the argument was the path for a git repository, then the path
+#       of the directory was echoed if the repository was in a "non-trivial"
+#       state.
+#    b) If the argument was not the path for a git repository, then
+#       GitDirectoryScanInternalRecursion was called with the list of paths of
+#       the directories contained within the directory given by the argument.
+#    After inspecting all arguments, zero was returned.
+# 3) The state of a repository as mentioned in 2.a is non-trivial if
+#    git status --porcelain=v1 produces a non-empty output.
 function GitDirectoryScanInternalRecursion ()
 {
   # Check for the absence of directory arguments.
@@ -88,10 +130,15 @@ function GitDirectoryScanInternalRecursion ()
       ### END ### Potentially-variable git repository inspection code.
 
     else
-      # Perform depth-first search. The arguments are the result of an
+      #    Perform depth-first search. The arguments are the result of an
       # expansion which produces the sorted list of any directories contained
       # within ${local_dir}. Note that trailing slashes are present in the
       # directory paths after expansion.
+      #    Quoting is necessary to prevent word splitting before pathname
+      # expansion. The list of words introduced by pathname expansion
+      # is the list of arguments passed to the function. This list may be
+      # empty. The arguments are not expanded or split after the pathname
+      # expansion which generated them.
       GitDirectoryScanInternalRecursion "${local_dir}"*/ ;
     fi
   done
@@ -149,7 +196,7 @@ function GitDirectoryScan ()
   return 0
 }
 
-function main ()
+function script_entry_point ()
 {
   local selected_dir
   if [[ ${1} ]]; then
@@ -170,7 +217,7 @@ function main ()
 
 # Script commands.
 
-# Invoke the script logic with an argument if one is present and exit back to 
+# Invokes the script logic with an argument if one is present. Exits back to
 # the supershell.
-main "$1"
+script_entry_point "$1"
 exit
