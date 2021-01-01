@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Script definitions
+
 # If the name of a defined, non-positional shell parameter is present as the
 # first argument, then a terminal slash / is added to the value of the
 # referenced parameter if one is not already present.
@@ -41,9 +43,10 @@ function ConvertDirectoryPathToAbsolutePath ()
     local -n arg_ref=${1} ;
     if [[ -d ${arg_ref} ]]; then
       local current_directory=${PWD} ;
-      cd ${arg_ref} ;
-      arg_ref=${PWD} ; # Remove . and .. special symbols and make absolute.
-      cd ${current_directory} ;
+      cd "${arg_ref}" ;
+      # Remove . and .. special symbols and make absolute.
+      arg_ref=${PWD} ;
+      cd "${current_directory}" ;
       return 0;
     else
       return 1;
@@ -56,6 +59,7 @@ function ConvertDirectoryPathToAbsolutePath ()
 function GitDirectoryScanInternalRecursion ()
 {
   # Check for the absence of directory arguments.
+  # (Terminal recursive condition.)
   if [[ $# == 0 ]]; then
     return 0;
   fi
@@ -63,16 +67,32 @@ function GitDirectoryScanInternalRecursion ()
   # Recursively iterate over all directory arguments.
   local i
   for (( i=1; i < ($# + 1); ++i)); do
+    # Expand i to its numeric value. Then use this numeric value to get the
+    # ith positional parameter value through position parameter expansion.
     local local_dir=${!i};
+    # Does local_dir have a .git directory?
     if [[ -d ${local_dir}.git ]]; then
-      cd ${local_dir};
+
+      ### START ### Potentially-variable git repository inspection code.
+
+      # Simple git directory inspection.
+      cd "${local_dir}";
       git status --porcelain=v1 >"/tmp/GitDirectoryScan";
+      # Any content? If so, inform the user about the non-trivial state of the
+      # repository.
       if [[ -s "/tmp/GitDirectoryScan" ]]; then
-        echo ${local_dir};
+        echo "${local_dir}";
       fi
       rm "/tmp/GitDirectoryScan";
+
+      ### END ### Potentially-variable git repository inspection code.
+
     else
-      GitDirectoryScanInternalRecursion ${local_dir}*/ ;
+      # Perform depth-first search. The arguments are the result of an
+      # expansion which produces the sorted list of any directories contained
+      # within ${local_dir}. Note that trailing slashes are present in the
+      # directory paths after expansion.
+      GitDirectoryScanInternalRecursion "${local_dir}"*/ ;
     fi
   done
   return 0;
@@ -91,7 +111,8 @@ function GitDirectoryScan ()
 
   # The status of these options is checked, each is set or cleared as needed,
   # and state is saved to allow the original status to be restored before exit.
-  local -A needed_glob_opt_status # 0 is true (on), 1 is false (off).
+  # 0 is true (on), 1 is false (off).
+  local -A needed_glob_opt_status
   needed_glob_opt_status=([dotglob]=1 [failglob]=1 [nullglob]=0)
   # Keys are glob option names. A value is the status of the glob option that
   # should be present at exit.
@@ -111,7 +132,7 @@ function GitDirectoryScan ()
     fi
   done
 
-  GitDirectoryScanInternalRecursion ${1}
+  GitDirectoryScanInternalRecursion "${1}"
 
   # Restore the original status of each relevant glob option.
   for glob_name in ${!invert_glob_option[@]}; do
@@ -123,7 +144,7 @@ function GitDirectoryScan ()
   done
 
   # Restore the working directory to what it was upon function invocation.
-  cd ${working_directory}
+  cd "${working_directory}"
 
   return 0
 }
@@ -144,10 +165,12 @@ function main ()
   ConvertDirectoryPathToAbsolutePath selected_dir
   ConditionalTerminalSlashAddition selected_dir
 
-  GitDirectoryScan ${selected_dir}
+  GitDirectoryScan "${selected_dir}"
 }
+
+# Script commands.
 
 # Invoke the script logic with an argument if one is present and exit back to 
 # the supershell.
-main $1
+main "$1"
 exit
