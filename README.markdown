@@ -4,8 +4,9 @@ A (currently small) collection of shell scripts that I have developed
 for my own use.
 
 * `git_search.sh`
-  * Searches an indicated directory subtree for Git repositories which need
-    attention. The repositories which were found are sent to standard output.
+  * A Bash script which searches an indicated directory subtree for Git
+    repositories which need attention. The repositories which were found are
+    sent to standard output.
   * A Git repository "needs attention" if `git status --porcelain=v1` produces
     a non-empty output.
   * An optional directory path argument may be provided. When no argument is
